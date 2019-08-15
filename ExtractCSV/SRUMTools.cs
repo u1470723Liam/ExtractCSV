@@ -48,6 +48,10 @@ namespace ExtractCSV
                     case 'B':
                         totalByteLength += 1;
                         break;
+                    case 's':
+                    case 'S':
+                        totalByteLength += 2;
+                        break;
                     case 'i':
                     case 'I':
                     case 'l':
@@ -84,6 +88,12 @@ namespace ExtractCSV
                         break;
                     case 'B':
                         outputList.Add((object)(byte)BitConverter.ToChar(revBytes, byteArrayPosition));
+                        break;
+                    case 's':
+                        outputList.Add((object)(short)BitConverter.ToInt16(revBytes, byteArrayPosition));
+                        break;
+                    case 'S':
+                        outputList.Add((object)(ushort)BitConverter.ToUInt16(revBytes, byteArrayPosition));
                         break;
                     case 'i':
                         outputList.Add((object)(int)BitConverter.ToInt32(revBytes, byteArrayPosition));

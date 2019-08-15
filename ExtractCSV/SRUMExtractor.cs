@@ -151,38 +151,48 @@ namespace ExtractCSV
 
                 foreach (ColumnInfo ci in cols)
                 {
-
                     Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
                     colNames[arrayPosition] = ci.Name;
-                    
 
+                    //if (ci.Name == "UserId")
+                    //{
+                    //    colDeets[arrayPosition] = getByteValue(buffer).ToString();
+                    //}
+                    //else if (ci.Name == "AutoIncId")
+                    //{
 
-                    switch (ci.Coltyp) {
+                    //    colDeets[arrayPosition] = getIntValue(buffer).ToString();
 
-                        case JET_coltyp.Long:
-                            colDeets[arrayPosition] = getLongValue(buffer).ToString();
-                            break;
-                        case JET_coltyp.UnsignedByte:
-                            colDeets[arrayPosition] = getUIntValue(buffer).ToString();
-                            break;
-                        case JET_coltyp.Binary:
-                            colDeets[arrayPosition] = getIntValue(buffer).ToString();
-                            break;
-                        case JET_coltyp.DateTime:
-                            colDeets[arrayPosition] = getDateTimeValue(buffer).ToString();
-                            break;
-                        default:
-                            if(ci.Coltyp.ToString() == "15")
-                            {
+                    //}
+                    //else
+                    //{
+                        switch (ci.Coltyp)
+                        {
+
+                            case JET_coltyp.Long:
                                 colDeets[arrayPosition] = getIntValue(buffer).ToString();
-                            }
-                            else
-                            {
-                                colDeets[arrayPosition] = ci.Coltyp.ToString() + " data type is not handled.";
-                            }
-                            break;
-                    }
-
+                                break;
+                            case JET_coltyp.UnsignedByte:
+                                colDeets[arrayPosition] = getUIntValue(buffer).ToString();
+                                break;
+                            case JET_coltyp.Binary:
+                                colDeets[arrayPosition] = getIntValue(buffer).ToString();
+                                break;
+                            case JET_coltyp.DateTime:
+                                colDeets[arrayPosition] = getDateTimeValue(buffer).ToString();
+                                break;
+                            default:
+                                if (ci.Coltyp.ToString() == "15")
+                                {
+                                    colDeets[arrayPosition] = getUShortValue(buffer).ToString();
+                                }
+                                else
+                                {
+                                    colDeets[arrayPosition] = ci.Coltyp.ToString() + " data type is not handled.";
+                                }
+                                break;
+                        }
+                    //}
                     arrayPosition++;
                 }
 
@@ -214,13 +224,26 @@ namespace ExtractCSV
 
         private Int64 getLongValue(byte[] buffer)
         {
-            Int64 val = (Int64)buffer[0];//(Int64)userUnpack.Unpack("q", subArray(buffer, 0, 8))[0];
+            Int64 val = (Int64)userUnpack.Unpack("q", subArray(buffer, 0, 8))[0];
             return val;
         }
 
         private byte getByteValue(byte[] buffer)
         {
-            byte val = buffer[0];//(byte)userUnpack.Unpack("B", subArray(buffer, 0, 1))[0];
+            byte val = buffer[0]; 
+            //(byte)userUnpack.Unpack("B", subArray(buffer, 0, 1))[0];
+            return val;
+        }
+
+        private short getShortValue(byte[] buffer)
+        {
+            short val = (short)userUnpack.Unpack("s", subArray(buffer, 0, 2))[0];
+            return val;
+        }
+
+        private ushort getUShortValue(byte[] buffer)
+        {
+            ushort val = (ushort)userUnpack.Unpack("S", subArray(buffer, 0, 2))[0];
             return val;
         }
 
@@ -237,7 +260,7 @@ namespace ExtractCSV
         }
 
         private DateTime getDateTimeValue(byte[] buffer)
-        {
+        {   
             long val = BitConverter.ToInt64(buffer, 0);
             
             double na = (double)userUnpack.Unpack("d", subArray(buffer, 0, 8))[0];
@@ -256,7 +279,7 @@ namespace ExtractCSV
         {
             string binarystring = Encoding.Unicode.GetString(buffer);
             string trim = Regex.Replace(binarystring, @"s", "");
-            return binarystring;
+            return binarystring; //131429
         }
 
         private byte[] FromHex(string hex)
