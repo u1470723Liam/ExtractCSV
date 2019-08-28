@@ -16,6 +16,8 @@ namespace ExtractCSV
         private JET_RETINFO retinf = new JET_RETINFO();
         private JET_RETINFO largeretinf = new JET_RETINFO();
         private SRUMTools userUnpack = new SRUMTools();
+        private List<Event> events = new List<Event>();
+        private List<AppUser> appUsers = new List<AppUser>();
 
         public SRUMExtractor()
         {
@@ -41,7 +43,7 @@ namespace ExtractCSV
             Api.JetCloseFileInstance(instance, JET_HANDLE.Nil);
         }
 
-        public void getProcesses(string tblName, StringBuilder sb)
+        public void getProcesses(string tblName)
         {
 
             Api.OpenTable(sesid, dbid, tblName, OpenTableGrbit.None, out userprocessid);
@@ -50,14 +52,12 @@ namespace ExtractCSV
             IEnumerable<ColumnInfo> cols = Api.GetTableColumns(sesid, userprocessid);
             Api.JetMove(sesid, userprocessid, JET_Move.First, 0);
 
-            sb.AppendLine("id,type,name");
-
             do
             {
                 byte type = 5;
                 long id = 0;
                 string name = "";
-                byte[] blobBuffer = new byte[1024];
+                byte[] blobBuffer = new byte[256];
                 SruId SRUId = new SruId();
                 foreach (ColumnInfo ci in cols)
                 {
@@ -65,18 +65,18 @@ namespace ExtractCSV
                     int read = 0;
                     if (ci.Coltyp == JET_coltyp.Long || ci.Coltyp.ToString() == "15")
                     {
-                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
+                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, buffer, 256, out read, RetrieveColumnGrbit.None, retinf);
                         id = getIntValue(buffer);
 
                     }
                     else if (ci.Coltyp == JET_coltyp.UnsignedByte)
                     {
-                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
+                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, buffer, 256, out read, RetrieveColumnGrbit.None, retinf);
                         type = getByteValue(buffer);
                     }
                     else if (ci.Coltyp == JET_coltyp.LongBinary)
                     {
-                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, blobBuffer, 1024, out read, RetrieveColumnGrbit.None, largeretinf);
+                        Api.JetRetrieveColumn(sesid, userprocessid, ci.Columnid, blobBuffer, 256, out read, RetrieveColumnGrbit.None, largeretinf);
                     }
                 }
 
@@ -112,114 +112,161 @@ namespace ExtractCSV
                 {
                     name = convertToSID(blobBuffer);
                 }
-                recordsMoved++;
+
+                string chars = "1234567890abcdefghijklmnopqrstuvwxyz[]/\\";
+                char[] anyOf = chars.ToCharArray();
+                int lastCharInd = name.LastIndexOfAny(anyOf);
+
+                if (lastCharInd >=0)
+                {
+                    name = name.Substring(0, lastCharInd +1);
+                }
+
+
                 SRUId = new SruId()
                 {
                     name = name,
                     id = id,
                     type = type
                 };
-                //SRUIds.Add(SRUId);
+
+                AppUser appUser = new AppUser()
+                {
+                    id = id,
+                    name = name
+                };
+
+                appUsers.Add(appUser);
                 string newLine = string.Format("{0},{1},{2}", SRUId.id, SRUId.type, SRUId.name);
-                sb.AppendLine(newLine);
             } while (Api.TryMove(sesid, userprocessid, JET_Move.Next, 0));
             Console.WriteLine("Records Extracted from " + tblName + ": " + recordsMoved);
         }
 
 
-        public void getExtendedTables(string tblName, StringBuilder sb)
+        public void getExtendedTables(string tblName)
         {
             Api.OpenTable(sesid, dbid, tblName, OpenTableGrbit.None, out extendedid);
-
-            bool first = true;
-            int recordsMoved = 0;
             IEnumerable<ColumnInfo> cols = Api.GetTableColumns(sesid, extendedid);
             ICollection<ColumnInfo> colsDet = cols.ToList();
 
             Api.JetMove(sesid, extendedid, JET_Move.First, 0);
-
             do
             {
-                string csvstring = "";
-                string csvheader = "";
-                string[] colNames = new string[colsDet.Count];
-                string[] colDeets = new string[colsDet.Count];
-                
+                Event compEvent = new Event();
                 byte[] buffer = new byte[1024];
                 int read = 0;
-                int arrayPosition = 0;
 
                 foreach (ColumnInfo ci in cols)
                 {
                     Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
-                    colNames[arrayPosition] = ci.Name;
-
-                    //if (ci.Name == "UserId")
-                    //{
-                    //    colDeets[arrayPosition] = getByteValue(buffer).ToString();
-                    //}
-                    //else if (ci.Name == "AutoIncId")
-                    //{
-
-                    //    colDeets[arrayPosition] = getIntValue(buffer).ToString();
-
-                    //}
-                    //else
-                    //{
-                        switch (ci.Coltyp)
+                        switch (ci.Name)
                         {
 
-                            case JET_coltyp.Long:
-                                colDeets[arrayPosition] = getIntValue(buffer).ToString();
+                            case "UserId":
+                                compEvent.userid = getIntValue(buffer);
                                 break;
-                            case JET_coltyp.UnsignedByte:
-                                colDeets[arrayPosition] = getUIntValue(buffer).ToString();
-                                break;
-                            case JET_coltyp.Binary:
-                                colDeets[arrayPosition] = getIntValue(buffer).ToString();
-                                break;
-                            case JET_coltyp.DateTime:
-                                colDeets[arrayPosition] = getDateTimeValue(buffer).ToString();
+                            case "AppId":
+
+                                string appName = appUsers.Find(x => x.getID() == getIntValue(buffer)).getName();
+                                int lastInd = appName.LastIndexOf('\\');
+                            
+                                if (lastInd >= -0)
+                                {
+                                    appName = appName.Substring(lastInd + 1);
+                                }
+                                compEvent.app = appName;
+                                    break;
+                            case "TimeStamp":
+                                compEvent.timestamp = getDateTimeValue(buffer);
                                 break;
                             default:
-                                if (ci.Coltyp.ToString() == "15")
-                                {
-                                    colDeets[arrayPosition] = getUShortValue(buffer).ToString();
-                                }
-                                else
-                                {
-                                    colDeets[arrayPosition] = ci.Coltyp.ToString() + " data type is not handled.";
-                                }
                                 break;
                         }
-                    //}
-                    arrayPosition++;
                 }
-
-                if (first)
-                {
-                    foreach (string col in colNames)
-                    {
-                        csvheader += col + ",";
-                    }
-                    csvheader.Remove(csvheader.LastIndexOf(','), 1);
-                    sb.AppendLine(csvheader);
-                }
-
-                foreach (string col in colDeets)
-                {
-                    csvstring += col + ",";
-                }
-
-                csvstring.Remove(csvstring.LastIndexOf(','), 1);
-                sb.AppendLine(csvstring);
-
-                first = false;
-                recordsMoved++;
+                events.Add(compEvent);
             } while (Api.TryMove(sesid, extendedid, JET_Move.Next, 0));
 
-            Console.WriteLine("Records Extracted from " + tblName + ": " + recordsMoved);
+            Console.WriteLine("Records Extracted from " + tblName + ": " + events.Count);
         }
+
+        //Original dynamic csv extraction method
+        //public void getExtendedTables(string tblName)
+        //{
+        //    Api.OpenTable(sesid, dbid, tblName, OpenTableGrbit.None, out extendedid);
+
+        //    bool first = true;
+        //    int recordsMoved = 0;
+        //    IEnumerable<ColumnInfo> cols = Api.GetTableColumns(sesid, extendedid);
+        //    ICollection<ColumnInfo> colsDet = cols.ToList();
+
+        //    Api.JetMove(sesid, extendedid, JET_Move.First, 0);
+
+        //    do
+        //    {
+        //        string csvstring = "";
+        //        string csvheader = "";
+        //        string[] colNames = new string[colsDet.Count];
+        //        string[] colDeets = new string[colsDet.Count];
+
+        //        byte[] buffer = new byte[1024];
+        //        int read = 0;
+        //        int arrayPosition = 0;
+
+        //        foreach (ColumnInfo ci in cols)
+        //        {
+        //            Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
+        //            colNames[arrayPosition] = ci.Name;
+        //            switch (ci.Coltyp)
+        //            {
+
+        //                case JET_coltyp.Long:
+        //                    colDeets[arrayPosition] = getIntValue(buffer).ToString();
+        //                    break;
+        //                case JET_coltyp.UnsignedByte:
+        //                    colDeets[arrayPosition] = getUIntValue(buffer).ToString();
+        //                    break;
+        //                case JET_coltyp.Binary:
+        //                    colDeets[arrayPosition] = getIntValue(buffer).ToString();
+        //                    break;
+        //                case JET_coltyp.DateTime:
+        //                    colDeets[arrayPosition] = getDateTimeValue(buffer).ToString();
+        //                    break;
+        //                default:
+        //                    if (ci.Coltyp.ToString() == "15")
+        //                    {
+        //                        colDeets[arrayPosition] = getUShortValue(buffer).ToString();
+        //                    }
+        //                    else
+        //                    {
+        //                        colDeets[arrayPosition] = ci.Coltyp.ToString() + " data type is not handled.";
+        //                    }
+        //                    break;
+        //            }
+        //            arrayPosition++;
+        //        }
+
+        //        if (first)
+        //        {
+        //            foreach (string col in colNames)
+        //            {
+        //                csvheader += col + ",";
+        //            }
+        //            csvheader.Remove(csvheader.LastIndexOf(','), 1);
+        //        }
+
+        //        foreach (string col in colDeets)
+        //        {
+        //            csvstring += col + ",";
+        //        }
+
+        //        csvstring.Remove(csvstring.LastIndexOf(','), 1);
+
+        //        first = false;
+        //        recordsMoved++;
+        //    } while (Api.TryMove(sesid, extendedid, JET_Move.Next, 0));
+
+        //    Console.WriteLine("Records Extracted from " + tblName + ": " + recordsMoved);
+        //}
 
 
         private Int64 getLongValue(byte[] buffer)
@@ -345,6 +392,11 @@ namespace ExtractCSV
         {
             DateTime dt = new DateTime(1899, 12, 30, 0, 0, 0);
             return dt + TimeSpan.FromTicks(Convert.ToInt64(d * TimeSpan.TicksPerDay));
+        }
+
+        public List<Event> getEvents()
+        {
+            return events;
         }
     }
 }

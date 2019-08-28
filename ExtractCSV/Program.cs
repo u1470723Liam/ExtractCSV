@@ -26,20 +26,25 @@ namespace ExtractCSV
             SRUMExtractor srumEx = new SRUMExtractor();
             srumEx.initiateSRUM(location);
 
-            StringBuilder processesCSV = new StringBuilder();
-            StringBuilder resourceCSV = new StringBuilder();
-            StringBuilder networkCSV = new StringBuilder();
+            //StringBuilder processesCSV = new StringBuilder();
+            //StringBuilder resourceCSV = new StringBuilder();
+            //StringBuilder networkCSV = new StringBuilder();
 
-            //srumEx.getProcesses(userprocessTbl, processesCSV);
-            srumEx.getExtendedTables(resourceTbl, resourceCSV);
-            srumEx.getExtendedTables(networkTbl, networkCSV);
+            srumEx.getProcesses(userprocessTbl);
+            srumEx.getExtendedTables(resourceTbl);
+            //srumEx.getExtendedTables(networkTbl, networkCSV);
 
             //File.WriteAllText(fileLoc + "\\" + prefix + "Processes.csv", processesCSV.ToString());
-            File.WriteAllText(fileLoc + "\\" + prefix + "Resources.csv", resourceCSV.ToString());
-            File.WriteAllText(fileLoc + "\\" + prefix + "Network.csv", networkCSV.ToString());
+            //File.WriteAllText(fileLoc + "\\" + prefix + "Resources.csv", resourceCSV.ToString());
+            //File.WriteAllText(fileLoc + "\\" + prefix + "Network.csv", networkCSV.ToString());
 
             
-            networkCSV.Clear();
+            //networkCSV.Clear();
+
+            foreach (Event ev in srumEx.getEvents())
+            {
+                Console.WriteLine(ev.toString());
+            }
 
             Console.WriteLine("Done");
             while (true){}
