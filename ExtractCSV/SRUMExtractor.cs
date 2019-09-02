@@ -133,7 +133,8 @@ namespace ExtractCSV
                 AppUser appUser = new AppUser()
                 {
                     id = id,
-                    name = name
+                    name = name,
+                    type = type
                 };
 
                 appUsers.Add(appUser);
@@ -167,14 +168,19 @@ namespace ExtractCSV
                                 break;
                             case "AppId":
 
-                                string appName = appUsers.Find(x => x.getID() == getIntValue(buffer)).getName();
-                                int lastInd = appName.LastIndexOf('\\');
+                                AppUser appuser = appUsers.Find(x => x.getID() == getIntValue(buffer));
+                                compEvent.app = getIntValue(buffer).ToString();
+                                //Get app name...
+                                //string appName = appuser.getName();
+                                //int lastInd = appName.LastIndexOf('\\');
                             
-                                if (lastInd >= -0)
-                                {
-                                    appName = appName.Substring(lastInd + 1);
-                                }
-                                compEvent.app = appName;
+                                //if (lastInd >= -0)
+                                //{
+                                //    appName = appName.Substring(lastInd + 1);
+                                //}
+                                //compEvent.app = appName;
+
+                                compEvent.type = appuser.type;
                                     break;
                             case "TimeStamp":
                                 compEvent.timestamp = getDateTimeValue(buffer);

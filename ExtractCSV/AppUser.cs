@@ -10,6 +10,7 @@ namespace ExtractCSV
     {
         public long id;
         public string name;
+        public int type;
 
 
         public string getName()
@@ -20,6 +21,11 @@ namespace ExtractCSV
         public long getID()
         {
             return id;
+        }
+
+        public int getType()
+        {
+            return type;
         }
     }
 }
