@@ -63,6 +63,7 @@ namespace ExtractCSV
                         totalByteLength += 2;
                         break;
                     case 'd':
+                    case 'D':
                     case 'q':
                     case 'Q':
                         totalByteLength += 8;
@@ -120,6 +121,10 @@ namespace ExtractCSV
                         byteArrayPosition += 2;
                         break;
                     case 'd':
+                        outputList.Add((object)(double)BitConverter.ToDouble(revBytes, byteArrayPosition));
+                        byteArrayPosition += 8;
+                        break;
+                    case 'D':
                         outputList.Add((object)(double)BitConverter.ToDouble(revBytes, byteArrayPosition));
                         byteArrayPosition += 8;
                         break;

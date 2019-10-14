@@ -45,7 +45,6 @@ namespace ExtractCSV
 
         public void getProcesses(string tblName, StringBuilder sb)
         {
-
             Api.OpenTable(sesid, dbid, tblName, OpenTableGrbit.None, out userprocessid);
 
             int recordsMoved = 0;
@@ -123,8 +122,7 @@ namespace ExtractCSV
                 {
                     name = name.Substring(0, lastCharInd +1);
                 }
-
-
+                
                 SRUId = new SruId()
                 {
                     name = name,
@@ -244,7 +242,7 @@ namespace ExtractCSV
                         default:
                             if (ci.Coltyp.ToString() == "15")
                             {
-                                colDeets[arrayPosition] = getUShortValue(buffer).ToString();
+                                colDeets[arrayPosition] = getUIntValue(buffer).ToString();
                             }
                             else
                             {
@@ -319,8 +317,6 @@ namespace ExtractCSV
 
         private DateTime getDateTimeValue(byte[] buffer)
         {   
-            long val = BitConverter.ToInt64(buffer, 0);
-            
             double na = (double)userUnpack.Unpack("d", subArray(buffer, 0, 8))[0];
             DateTime timestamp = c(na);
             return timestamp;
