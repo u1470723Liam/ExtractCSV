@@ -144,59 +144,7 @@ namespace ExtractCSV
             } while (Api.TryMove(sesid, userprocessid, JET_Move.Next, 0));
             Console.WriteLine("Records Extracted from " + tblName + ": " + recordsMoved);
         }
-
-
-        public void getExtendedTables(string tblName)
-        {
-            Api.OpenTable(sesid, dbid, tblName, OpenTableGrbit.None, out extendedid);
-            IEnumerable<ColumnInfo> cols = Api.GetTableColumns(sesid, extendedid);
-            ICollection<ColumnInfo> colsDet = cols.ToList();
-
-            Api.JetMove(sesid, extendedid, JET_Move.First, 0);
-            do
-            {
-                Event compEvent = new Event();
-                byte[] buffer = new byte[1024];
-                int read = 0;
-
-                foreach (ColumnInfo ci in cols)
-                {
-                    Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
-                        switch (ci.Name)
-                        {
-
-                            case "UserId":
-                                compEvent.userid = getIntValue(buffer);
-                                break;
-                            case "AppId":
-
-                                AppUser appuser = appUsers.Find(x => x.getID() == getIntValue(buffer));
-                                compEvent.app = getIntValue(buffer).ToString();
-                                //Get app name...
-                                //string appName = appuser.getName();
-                                //int lastInd = appName.LastIndexOf('\\');
-                            
-                                //if (lastInd >= -0)
-                                //{
-                                //    appName = appName.Substring(lastInd + 1);
-                                //}
-                                //compEvent.app = appName;
-
-                                compEvent.type = appuser.type;
-                                    break;
-                            case "TimeStamp":
-                                compEvent.timestamp = getDateTimeValue(buffer);
-                                break;
-                            default:
-                                break;
-                        }
-                }
-                events.Add(compEvent);
-            } while (Api.TryMove(sesid, extendedid, JET_Move.Next, 0));
-
-            Console.WriteLine("Records Extracted from " + tblName + ": " + events.Count);
-        }
-
+        
         //Original dynamic csv extraction method
         public void getExtendedTablesAll(string tblName, StringBuilder sb)
         {
@@ -216,22 +164,20 @@ namespace ExtractCSV
                 string[] colNames = new string[colsDet.Count];
                 string[] colDeets = new string[colsDet.Count];
 
-                byte[] buffer = new byte[1024];
+                
                 int read = 0;
                 int arrayPosition = 0;
 
                 foreach (ColumnInfo ci in cols)
                 {
-                    Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 1024, out read, RetrieveColumnGrbit.None, retinf);
+                    byte[] buffer = new byte[128];
+                    Api.JetRetrieveColumn(sesid, extendedid, ci.Columnid, buffer, 128, out read, RetrieveColumnGrbit.None, retinf);
                     colNames[arrayPosition] = ci.Name;
+                    //Console.WriteLine(ci.Name + " " + ci.Coltyp);
                     switch (ci.Coltyp)
                     {
-
                         case JET_coltyp.Long:
                             colDeets[arrayPosition] = getIntValue(buffer).ToString();
-                            break;
-                        case JET_coltyp.UnsignedByte:
-                            colDeets[arrayPosition] = getUIntValue(buffer).ToString();
                             break;
                         case JET_coltyp.Binary:
                             colDeets[arrayPosition] = getIntValue(buffer).ToString();
@@ -240,9 +186,9 @@ namespace ExtractCSV
                             colDeets[arrayPosition] = getDateTimeValue(buffer).ToString();
                             break;
                         default:
-                            if (ci.Coltyp.ToString() == "15")
+                           if (ci.Coltyp.ToString() == "15")
                             {
-                                colDeets[arrayPosition] = getUIntValue(buffer).ToString();
+                                colDeets[arrayPosition] = getLongValue(buffer).ToString();
                             }
                             else
                             {
@@ -277,7 +223,6 @@ namespace ExtractCSV
             Console.WriteLine("Records Extracted from " + tblName + ": " + recordsMoved);
         }
 
-
         private Int64 getLongValue(byte[] buffer)
         {
             Int64 val = (Int64)userUnpack.Unpack("q", subArray(buffer, 0, 8))[0];
@@ -287,7 +232,6 @@ namespace ExtractCSV
         private byte getByteValue(byte[] buffer)
         {
             byte val = buffer[0]; 
-            //(byte)userUnpack.Unpack("B", subArray(buffer, 0, 1))[0];
             return val;
         }
 
@@ -311,29 +255,16 @@ namespace ExtractCSV
 
         private UInt32 getUIntValue(byte[] buffer)
         {
-            UInt32 na = (UInt32)userUnpack.Unpack(">I", subArray(buffer, 0, 4))[0];
+            UInt32 na = (UInt32)userUnpack.Unpack("I", subArray(buffer, 0, 4))[0];
             return na;
         }
 
         private DateTime getDateTimeValue(byte[] buffer)
-        {   
+        {
             double na = (double)userUnpack.Unpack("d", subArray(buffer, 0, 8))[0];
             DateTime timestamp = c(na);
+            
             return timestamp;
-        }
-
-        public DateTime GetDTCTime(ulong nanoseconds, ulong ticksPerNanosecond)
-        {
-            DateTime pointOfReference = new DateTime(1899, 1, 1, 0, 0, 0);
-            long ticks = (long)(nanoseconds / ticksPerNanosecond);
-            return pointOfReference.AddMilliseconds(ticks);
-        }
-
-        private string getLongBinaryValue(byte[] buffer)
-        {
-            string binarystring = Encoding.Unicode.GetString(buffer);
-            string trim = Regex.Replace(binarystring, @"s", "");
-            return binarystring; //131429
         }
 
         private byte[] FromHex(string hex)
@@ -397,8 +328,10 @@ namespace ExtractCSV
 
         private DateTime c(double d)
         {
-            DateTime dt = new DateTime(1899, 12, 30, 0, 0, 0);
-            return dt + TimeSpan.FromTicks(Convert.ToInt64(d * TimeSpan.TicksPerDay));
+            DateTime dt = new DateTime(1899, 12, 30, 0, 0, 0, DateTimeKind.Local);
+            //For double datatype
+            Console.WriteLine((d * TimeSpan.TicksPerDay) / TimeSpan.TicksPerSecond);
+            return dt.AddSeconds(Convert.ToInt64((d * TimeSpan.TicksPerDay) / TimeSpan.TicksPerSecond));
         }
 
         public List<Event> getEvents()
