@@ -328,12 +328,14 @@ namespace ExtractCSV
 
         private DateTime c(double d)
         {
-            DateTime dt = new DateTime(1899, 12, 30, 0, 0, 0, DateTimeKind.Local);
-            //For double datatype
-            Console.WriteLine((d * TimeSpan.TicksPerDay) / TimeSpan.TicksPerSecond);
-            return dt.AddSeconds(Convert.ToInt64((d * TimeSpan.TicksPerDay) / TimeSpan.TicksPerSecond));
+            return DateTime.FromOADate(d);
         }
 
+        private DateTime newDateMethod(byte[] buffer)
+        {
+            return DateTime.FromBinary(getLongValue(buffer));
+        }
+        
         public List<Event> getEvents()
         {
             return events;
